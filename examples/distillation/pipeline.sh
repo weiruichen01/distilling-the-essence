@@ -6,7 +6,7 @@ echo 'entering pipeline.sh'
 datetime=`date +%Y%m%d-%H%M%S`
 echo "datetime: $datetime"
 
-repo_name=prepare_for_distilling_the_essence
+repo_name=distilling-the-essence
 
 # Replace these variables for your need
 PROJ_SCRATCH_DIR="/scratch/$USER/$repo_name" # where produced files are stored

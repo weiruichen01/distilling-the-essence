@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-repo_name=prepare_for_distilling_the_essence
+repo_name=distilling-the-essence
 scratch_dir=/scratch/$USER/$repo_name # where the venv is installed and where models and datasets are downloaded to
 code_dir=/home/$USER/$repo_name
 mkdir -p $scratch_dir/hf_models
