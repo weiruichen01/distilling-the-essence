@@ -1,11 +1,57 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-repo_name=distilling-the-essence
-scratch_dir=/scratch/$USER/$repo_name # where the venv is installed and where models and datasets are downloaded to
-code_dir=/home/$USER/$repo_name
-mkdir -p $scratch_dir/hf_models
-mkdir -p $scratch_dir/hf_datasets
+usage() {
+    echo "Usage: $0 --work-dir <path> --codebase-dir <path>"
+    echo ""
+    echo "Required arguments:"
+    echo "  --work-dir <path>      Directory where venvs are installed and models/datasets are downloaded"
+    echo "  --codebase-dir <path>  Directory where codebase is stored"
+    echo ""
+    echo "Options:"
+    echo "  -h, --help             Show this help message"
+    exit 1
+}
+
+work_dir=""
+codebase_dir=""
+
+# Parse command-line arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --work-dir)
+            work_dir="$2"
+            shift 2
+            ;;
+        --codebase-dir)
+            codebase_dir="$2"
+            shift 2
+            ;;
+        -h|--help)
+            usage
+            ;;
+        *)
+            echo "Unknown option: $1"
+            usage
+            ;;
+    esac
+done
+
+# Validate required arguments
+if [[ -z "$work_dir" ]]; then
+    echo "Error: --work-dir is required"
+    usage
+fi
+if [[ -z "$codebase_dir" ]]; then
+    echo "Error: --codebase-dir is required"
+    usage
+fi
+
+echo "work_dir: $work_dir"
+echo "codebase_dir: $codebase_dir"
+
+mkdir -p $work_dir/hf_models
+mkdir -p $work_dir/hf_datasets
 
 rebuild_env_hf_download=1
 download_models=1
@@ -18,7 +64,7 @@ module load arrow
 # ------------------------------------------------------------ #
 # venv setup for hf_download
 # ------------------------------------------------------------ #
-env_hf_download="$scratch_dir/env_hf_download"
+env_hf_download="$work_dir/env_hf_download"
 if [ "$rebuild_env_hf_download" -eq 1 ]; then
     deactivate 2>/dev/null || true
     if [ -d "$env_hf_download" ]; then
@@ -65,8 +111,8 @@ datasets_to_download=(
 
 if [ "$download_models" -eq 1 ]; then
     source $env_hf_download/bin/activate
-    echo "Downloading models to $scratch_dir/hf_models ..."
-    export HF_HOME=$scratch_dir/hf_models
+    echo "Downloading models to $work_dir/hf_models ..."
+    export HF_HOME=$work_dir/hf_models
     for model in "${models_to_download[@]}"; do
         hf download $model
     done
@@ -75,8 +121,8 @@ fi
 if [ "$download_datasets" -eq 1 ]; then
     source $env_hf_download/bin/activate
     echo ""
-    echo "Downloading datasets to $scratch_dir/hf_datasets ..."
-    export HF_HOME=$scratch_dir/hf_datasets
+    echo "Downloading datasets to $work_dir/hf_datasets ..."
+    export HF_HOME=$work_dir/hf_datasets
     # for dataset in "${datasets_to_download[@]}"; do
     #     hf download $dataset --repo-type dataset
     # done
@@ -97,7 +143,7 @@ fi
 if [ "$rebuild_env_exp" -eq 1 ]; then
     deactivate 2>/dev/null || true
     module load cuda/12.6
-    env_exp="$scratch_dir/env_exp"
+    env_exp="$work_dir/env_exp"
     if [ -d "$env_exp" ]; then
         rm -rf $env_exp
         echo " Removed existing virtual environment at $env_exp"
@@ -116,8 +162,8 @@ if [ "$rebuild_env_exp" -eq 1 ]; then
     echo "Installing required packages..."
     pip install --upgrade pip
 
-    pip install -r $code_dir/examples/distillation/requirements_training.txt
-    cd $code_dir
+    pip install -r $codebase_dir/examples/distillation/requirements_training.txt
+    cd $codebase_dir
     pip install -e ".[all]"
     echo " Required packages installed"
     echo ""
@@ -134,7 +180,7 @@ if [ "$rebuild_env_eval" -eq 1 ]; then
     module load StdEnv/2023
     module load python/3.11 scipy-stack gcc arrow cuda/12.9 cudnn opencv rust
 
-    env_eval="$scratch_dir/env_eval"
+    env_eval="$work_dir/env_eval"
     if [ -d "$env_eval" ]; then
         rm -rf $env_eval
         echo "Removed existing virtual environment at $env_eval"
@@ -152,7 +198,7 @@ if [ "$rebuild_env_eval" -eq 1 ]; then
     # Upgrade pip and install required packages
     echo "Installing required packages..."
     pip install --upgrade pip
-    pip install -r $code_dir/examples/distillation/requirements_eval.txt
+    pip install -r $codebase_dir/examples/distillation/requirements_eval.txt
     pip install "lighteval[extended-tasks]==0.10.0" # install extended tasks
     pip install more_itertools==10.8.0
     pip install openai==1.99.1
