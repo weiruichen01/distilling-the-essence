@@ -21,7 +21,9 @@ source $venv_train_path/bin/activate
 # replace the value (e.g. "Qwen/Qwen3-8B") with the path where model is stored if running in offline mode
 # ex: .../hub/models--Qwen--Qwen3-8B/snapshots/b968826d9c46dd6066d109eabc6255188de91218
 declare -A model_path_dict=(
+    ["Qwen3-32B"]="Qwen/Qwen3-32B"
     ["Qwen3-8B"]="Qwen/Qwen3-8B"
+    ["Qwen3-8B-Base"]="Qwen/Qwen3-8B-Base"
     ["Qwen3-1.7B"]="Qwen/Qwen3-1.7B"
     ["Qwen3-4B-Base"]="Qwen/Qwen3-4B-Base"
     ["Qwen3-0.6B-Base"]="Qwen/Qwen3-0.6B-Base"
@@ -33,6 +35,8 @@ model_path=${model_path_dict[$model_name]}
 # ex: .../hub/datasets--bespokelabs--Bespoke-Stratos-17k/snapshots/9e9adba943911a9fc44dffcb30aaa18dc96ae6df/data
 declare -A data_path_dict=(
     ["bespoke_stratos17k"]="bespokelabs/Bespoke-Stratos-17k"
+    ["open_thoughts114k"]="open-thoughts/OpenThoughts-114k"
+    ["skyt1"]="NovaSky-AI/Sky-T1_data_17k"
 )
 data_path=${data_path_dict[$dataset]}
 
