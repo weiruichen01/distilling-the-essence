@@ -77,7 +77,7 @@ distillation_loss_ratio=0.5
 is_reasoning_llm=True
 cot_start_token="<think>"
 cot_end_token="</think>"
-included_first_x_percent=0.5
+: ${included_first_x_percent:=0.5}
 save_on_best_validation=True
 section_inclusion="promptcotAns"
 
@@ -106,7 +106,7 @@ truncate_after_think_end_token=False
 # Run training script
 ######################
 
-python -u $PROJ_CODE_DIR/examples/distillation/training.py \
+python -u $codebase_dir/examples/distillation/training.py \
     --model_path "$model_path" \
     --teacher_model_path "$teacher_model_path" \
     --dataset "$dataset" \

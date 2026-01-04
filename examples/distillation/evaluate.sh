@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-echo "\n\nRunning evaluate.sh ...\n\n"
+echo -e "\n\nRunning evaluate.sh ...\n\n"
 
 module purge
 module load StdEnv/2023

@@ -107,6 +107,7 @@ datasets_to_download=(
     'HuggingFaceH4/aime_2024'
     'yentinglin/aime_2025'
     'NovaSky-AI/Sky-T1_data_17k'
+    'PrimeIntellect/SYNTHETIC-1'
 )
 
 if [ "$download_models" -eq 1 ]; then
