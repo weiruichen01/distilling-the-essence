@@ -108,6 +108,7 @@ datasets_to_download=(
     'yentinglin/aime_2025'
     'NovaSky-AI/Sky-T1_data_17k'
     'PrimeIntellect/SYNTHETIC-1'
+    'nvidia/Llama-Nemotron-Post-Training-Dataset'
 )
 
 if [ "$download_models" -eq 1 ]; then
