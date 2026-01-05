@@ -47,8 +47,9 @@ Arguments:
 We provide data modules for several datasets used in our experiments, including:
 - **OpenThoughts**
 - **Bespoke-Stratos**
-- **SkyT1**
 - **Synthetic-1**
+- **Nemotron**
+- **SkyT1**
 
 You can leverage these included data modules for your experiments. To switch between datasets or modify experiment parameters, you can adjust the environment variables or arguments in `examples/distillation/training.sh` (e.g., setting `dataset="bespoke_stratos17k"` or `dataset="open_thoughts114k"`).
 
