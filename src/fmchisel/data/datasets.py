@@ -435,3 +435,256 @@ class SkyT117kModule(DataModule):
 
         self.dataset = {"train": train_split, "test": test_split}
         super().setup(stage)
+
+class Synthetic1Module(DataModule):
+    def __init__(self, tokenizer: AutoTokenizer,
+                 data_load_config: DataLoadingConfig):
+        super().__init__(tokenizer, data_load_config)
+
+        self.tokenizer = tokenizer
+        self.half_keep_strategy = getattr(data_load_config, "half_keep_strategy", None)
+        self.truncate_after_think_end_token = getattr(data_load_config, "truncate_after_think_end_token", False)
+        if self.truncate_after_think_end_token:
+            self.think_end_token_ids = self.tokenizer.encode(data_load_config.cot_end_token, add_special_tokens=False)
+        else:
+            self.think_end_token_ids = None
+
+        self.collator = DataCollatorForCompletionOnlyLM(
+                tokenizer=tokenizer,
+                response_template=data_load_config.response_template,
+                pad_to_multiple_of=16,
+                return_prompt_input_ids=self.return_prompt_input_ids,
+                section_inclusion=data_load_config.section_inclusion,
+                random_mask_ratio=data_load_config.random_mask_ratio,
+                included_first_x_percent=data_load_config.included_first_x_percent,
+                half_keep_strategy=data_load_config.half_keep_strategy,
+                cot_start_token = data_load_config.cot_start_token,
+                cot_end_token = data_load_config.cot_end_token,
+                is_reasoning_llm = data_load_config.is_reasoning_llm,
+            )
+        self.included_first_x_percent = data_load_config.included_first_x_percent
+
+    def tokenize(self, example):
+        formatted_texts = self.formatting_func(example)
+
+        outputs = self.tokenizer(
+            formatted_texts,
+            truncation=False,
+            padding=False,
+            max_length=None,
+        )
+
+        input_ids      = outputs["input_ids"][0]
+        attention_mask = outputs["attention_mask"][0]
+
+        if self.truncate_after_think_end_token and self.think_end_token_ids:
+            think_end_ids = self.think_end_token_ids
+            for i in range(len(input_ids) - len(think_end_ids) + 1):
+                if input_ids[i : i + len(think_end_ids)] == think_end_ids:
+                    truncation_point = i + len(think_end_ids)
+                    input_ids = input_ids[:truncation_point]
+                    attention_mask = attention_mask[:truncation_point]
+                    break
+
+        if self.half_keep_strategy is not None:
+            total_len = len(input_ids)
+            if total_len == 0:
+                kept_ids = input_ids
+                kept_mask = attention_mask
+            else:
+                half_len = max(1, int(total_len * 0.5))
+                if self.half_keep_strategy == "left":
+                    start = 0
+                elif self.half_keep_strategy == "middle":
+                    start = max(0, (total_len - half_len) // 2)
+                elif self.half_keep_strategy == "right":
+                    start = max(0, total_len - half_len)
+                else:
+                    raise ValueError(f"Unknown half_keep_strategy: {self.half_keep_strategy}")
+                end = start + half_len
+                kept_ids = input_ids[start:end]
+                kept_mask = attention_mask[start:end]
+            input_ids = kept_ids
+            attention_mask = kept_mask
+        elif 0.0 < self.included_first_x_percent < 1.0:
+            keep = int(len(input_ids) * self.included_first_x_percent)
+            keep = max(1, keep)
+            input_ids      = input_ids[:keep]
+            attention_mask = attention_mask[:keep]
+
+        return {
+            "input_ids": [input_ids],
+            "attention_mask": [attention_mask],
+        }
+
+    def formatting_func(self, example):
+        user_content = example["prompt"]
+        assistant_content = example["llm_response"]
+
+        if isinstance(user_content, list):
+            user_content = user_content[0]
+        if isinstance(assistant_content, list):
+            assistant_content = assistant_content[0]
+
+        messages = [
+            {"role": "user", "content": user_content},
+            {"role": "assistant", "content": assistant_content}
+        ]
+
+        text = self.tokenizer.apply_chat_template(
+            messages,
+            tokenize=False,
+            add_generation_prompt=True,
+            enable_thinking=True
+        )
+        return [text]
+
+    def setup(self, stage) -> None:
+        if os.environ.get('copy_arrow_to_SLURM_TMPDIR') == '1':
+            raw = datasets.load_from_disk(self.data_path)
+        else:
+            raw = datasets.load_dataset(self.data_path, split='train')
+
+        raw = raw.filter(lambda x: x['task_type'] == 'verifiable_math')
+
+        try:
+            from .included_indexes_synthetic1 import indexes_of_ex_with_less_than_4k_tokens_synthetic1
+        except ImportError:
+            from fmchisel.data.included_indexes_synthetic1 import indexes_of_ex_with_less_than_4k_tokens_synthetic1
+
+        filtered = raw.select(indexes_of_ex_with_less_than_4k_tokens_synthetic1)
+        splits = filtered.train_test_split(test_size=self.n_val, seed=42)
+        train_split = splits["train"].select(range(self.n_train))
+        test_split = splits["test"]
+
+        self.dataset = {"train": train_split, "test": test_split}
+        super().setup(stage)
+
+
+class NemotronModule(DataModule):
+    def __init__(self, tokenizer: AutoTokenizer,
+                 data_load_config: DataLoadingConfig):
+        super().__init__(tokenizer, data_load_config)
+
+        self.tokenizer = tokenizer
+        self.half_keep_strategy = getattr(data_load_config, "half_keep_strategy", None)
+        self.truncate_after_think_end_token = getattr(data_load_config, "truncate_after_think_end_token", False)
+        if self.truncate_after_think_end_token:
+            self.think_end_token_ids = self.tokenizer.encode(data_load_config.cot_end_token, add_special_tokens=False)
+        else:
+            self.think_end_token_ids = None
+
+        self.collator = DataCollatorForCompletionOnlyLM(
+                tokenizer=tokenizer,
+                response_template=data_load_config.response_template,
+                pad_to_multiple_of=16,
+                return_prompt_input_ids=self.return_prompt_input_ids,
+                section_inclusion=data_load_config.section_inclusion,
+                random_mask_ratio=data_load_config.random_mask_ratio,
+                included_first_x_percent=data_load_config.included_first_x_percent,
+                half_keep_strategy=data_load_config.half_keep_strategy,
+                cot_start_token = data_load_config.cot_start_token,
+                cot_end_token = data_load_config.cot_end_token,
+                is_reasoning_llm = data_load_config.is_reasoning_llm,
+            )
+        self.included_first_x_percent = data_load_config.included_first_x_percent
+
+    def tokenize(self, example):
+        formatted_texts = self.formatting_func(example)
+
+        outputs = self.tokenizer(
+            formatted_texts,
+            truncation=False,
+            padding=False,
+            max_length=None,
+        )
+
+        input_ids      = outputs["input_ids"][0]
+        attention_mask = outputs["attention_mask"][0]
+
+        if self.truncate_after_think_end_token and self.think_end_token_ids:
+            think_end_ids = self.think_end_token_ids
+            for i in range(len(input_ids) - len(think_end_ids) + 1):
+                if input_ids[i : i + len(think_end_ids)] == think_end_ids:
+                    truncation_point = i + len(think_end_ids)
+                    input_ids = input_ids[:truncation_point]
+                    attention_mask = attention_mask[:truncation_point]
+                    break
+
+        if self.half_keep_strategy is not None:
+            total_len = len(input_ids)
+            if total_len == 0:
+                kept_ids = input_ids
+                kept_mask = attention_mask
+            else:
+                half_len = max(1, int(total_len * 0.5))
+                if self.half_keep_strategy == "left":
+                    start = 0
+                elif self.half_keep_strategy == "middle":
+                    start = max(0, (total_len - half_len) // 2)
+                elif self.half_keep_strategy == "right":
+                    start = max(0, total_len - half_len)
+                else:
+                    raise ValueError(f"Unknown half_keep_strategy: {self.half_keep_strategy}")
+                end = start + half_len
+                kept_ids = input_ids[start:end]
+                kept_mask = attention_mask[start:end]
+            input_ids = kept_ids
+            attention_mask = kept_mask
+        elif 0.0 < self.included_first_x_percent < 1.0:
+            keep = int(len(input_ids) * self.included_first_x_percent)
+            keep = max(1, keep)
+            input_ids      = input_ids[:keep]
+            attention_mask = attention_mask[:keep]
+
+        return {
+            "input_ids": [input_ids],
+            "attention_mask": [attention_mask],
+        }
+
+    def formatting_func(self, example):
+        input_data = example["input"]
+        output_data = example["output"]
+
+
+        if isinstance(input_data[0], list):
+            user_content = input_data[0][0]["content"]
+        else:
+            user_content = input_data[0]["content"]
+
+        if isinstance(output_data, list):
+            assistant_content = output_data[0]
+        else:
+            assistant_content = output_data
+
+        messages = [
+            {"role": "user", "content": user_content},
+            {"role": "assistant", "content": assistant_content}
+        ]
+
+        text = self.tokenizer.apply_chat_template(
+            messages,
+            tokenize=False,
+            add_generation_prompt=True,
+            enable_thinking=True
+        )
+        return [text]
+
+    def setup(self, stage) -> None:
+        if os.environ.get('copy_arrow_to_SLURM_TMPDIR') == '1':
+            raw = datasets.load_from_disk(self.data_path)
+        else:
+            raw = datasets.load_dataset(self.data_path, "SFT", split='math')
+
+        try:
+            from .included_indexes_Nemotron import indexes_of_ex_with_less_than_4k_tokens_nemotron
+        except ImportError:
+            from fmchisel.data.included_indexes_Nemotron import indexes_of_ex_with_less_than_4k_tokens_nemotron
+
+        filtered = raw.select(indexes_of_ex_with_less_than_4k_tokens_nemotron)
+        splits = filtered.train_test_split(test_size=self.n_val, seed=42)
+        train_split = splits["train"].select(range(self.n_train))
+        test_split = splits["test"]
+
+        self.dataset = {"train": train_split, "test": test_split}
+        super().setup(stage)
