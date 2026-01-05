@@ -125,9 +125,6 @@ if [ "$download_datasets" -eq 1 ]; then
     echo ""
     echo "Downloading datasets to $work_dir/hf_datasets ..."
     export HF_HOME=$work_dir/hf_datasets
-    # for dataset in "${datasets_to_download[@]}"; do
-    #     hf download $dataset --repo-type dataset
-    # done
     configs=(
     ''
     )
