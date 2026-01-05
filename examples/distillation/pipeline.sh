@@ -69,7 +69,7 @@ echo "lsp: $lsp"
 export work_dir
 export codebase_dir
 export included_first_x_percent=$lsp
-account= # slurm account
+account= # Slurm account
 export venv_train_path=$work_dir/env_exp # the path to venv for training
 export venv_eval_path=$work_dir/env_eval
 export HF_CACHE=$work_dir/hf_datasets/datasets
